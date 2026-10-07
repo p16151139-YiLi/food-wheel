@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今天吃什麼？｜美食選擇轉盤</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(135deg, #fff7ed, #fef3c7);
+    color: #3f3f46;
+    min-height: 100vh;
+  }
+  .container {
+    width: min(920px, 92%);
+    margin: 0 auto;
+    padding: 40px 0 60px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  h1 { margin: 0 0 8px; font-size: 42px; color: #9a3412; }
+  .subtitle { margin: 0; color: #78716c; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .card {
+    background: rgba(255,255,255,.9);
+    border-radius: 22px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(120,53,15,.10);
+  }
+  .card h2 { margin-top: 0; color: #7c2d12; }
+  .input-row { display: flex; gap: 10px; }
+  input {
+    flex: 1;
+    padding: 13px 14px;
+    border: 2px solid #fed7aa;
+    border-radius: 12px;
+    font-size: 16px;
+    outline: none;
+  }
+  input:focus { border-color: #fb923c; }
+  button {
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .add-btn { background: #fb923c; color: white; }
+  .add-btn:hover { background: #ea580c; }
+  ul { list-style: none; padding: 0; margin: 18px 0 0; }
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #fff7ed;
+    border-radius: 10px;
+  }
+  .delete-btn { padding: 6px 10px; background: #fee2e2; color: #b91c1c; font-size: 13px; }
+  .wheel-wrap { text-align: center; }
+  .wheel {
+    width: min(330px, 80vw);
+    height: min(330px, 80vw);
+    margin: 10px auto 20px;
+    border-radius: 50%;
+    border: 10px solid white;
+    background: conic-gradient(
+      #fb923c 0deg 60deg,
+      #fde68a 60deg 120deg,
+      #86efac 120deg 180deg,
+      #93c5fd 180deg 240deg,
+      #c4b5fd 240deg 300deg,
+      #f9a8d4 300deg 360deg
+    );
+    position: relative;
+    transition: transform 2.8s cubic-bezier(.12,.75,.18,1);
+    box-shadow: 0 8px 25px rgba(0,0,0,.12);
+  }
+  .wheel::after {
+    content: "🍴";
+    position: absolute;
+    inset: 50%;
+    transform: translate(-50%, -50%);
+    width: 58px;
+    height: 58px;
+    background: white;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 28px;
+  }
+  .pointer {
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 30px solid #7c2d12;
+    margin: 0 auto -5px;
+    position: relative;
+    z-index: 2;
+  }
+  .spin-btn {
+    background: #c2410c;
+    color: white;
+    padding: 14px 28px;
+    font-size: 18px;
+  }
+  .spin-btn:hover { background: #9a3412; }
+  .spin-btn:disabled { opacity: .55; cursor: not-allowed; }
+  .result {
+    margin-top: 18px;
+    padding: 15px;
+    border-radius: 14px;
+    background: #ffedd5;
+    font-size: 20px;
+    font-weight: 700;
+    color: #9a3412;
+    min-height: 58px;
+    display: grid;
+    place-items: center;
+  }
+  .hint { color: #78716c; font-size: 14px; line-height: 1.6; }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+    h1 { font-size: 34px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🍜 今天吃什麼？</h1>
+    <p class="subtitle">選擇困難症的救星｜讓轉盤幫你決定今天的晚餐！</p>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <h2>🍱 我的餐點清單</h2>
+      <div class="input-row">
+        <input id="foodInput" type="text" placeholder="例如：火鍋、拉麵、炒飯">
+        <button class="add-btn" onclick="addFood()">加入</button>
+      </div>
+      <p class="hint">可以自行新增想吃的餐點，也可以刪除不想吃的選項。</p>
+      <ul id="foodList"></ul>
+    </section>
+
+    <section class="card wheel-wrap">
+      <h2>🎡 美食轉盤</h2>
+      <div class="pointer"></div>
+      <div class="wheel" id="wheel"></div>
+      <button class="spin-btn" id="spinBtn" onclick="spin()">開始幫我選！</button>
+      <div class="result" id="result">按下按鈕，看看今天吃什麼！</div>
+    </section>
+  </div>
+</div>
+
+<script>
+let foods = ["火鍋", "拉麵", "鍋燒麵", "義大利麵", "炒飯", "漢堡"];
+let rotation = 0;
+let spinning = false;
+
+function renderList() {
+  const list = document.getElementById("foodList");
+  list.innerHTML = "";
+  foods.forEach((food, index) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${escapeHtml(food)}</span>
+      <button class="delete-btn" onclick="removeFood(${index})">刪除</button>`;
+    list.appendChild(li);
+  });
+}
+
+function addFood() {
+  const input = document.getElementById("foodInput");
+  const food = input.value.trim();
+  if (!food) {
+    alert("請先輸入餐點名稱！");
+    return;
+  }
+  if (foods.includes(food)) {
+    alert("這個餐點已經在清單裡囉！");
+    return;
+  }
+  foods.push(food);
+  input.value = "";
+  renderList();
+}
+
+function removeFood(index) {
+  if (foods.length <= 2) {
+    alert("至少保留兩種餐點，轉盤才有選擇的意義！");
+    return;
+  }
+  foods.splice(index, 1);
+  renderList();
+}
+
+function spin() {
+  if (spinning) return;
+  if (foods.length < 2) {
+    alert("至少需要兩種餐點！");
+    return;
+  }
+
+  spinning = true;
+  document.getElementById("spinBtn").disabled = true;
+  const result = document.getElementById("result");
+  result.textContent = "轉盤轉呀轉……";
+
+  const index = Math.floor(Math.random() * foods.length);
+  const extraTurns = 5 + Math.floor(Math.random() * 3);
+  rotation += extraTurns * 360 + (360 - (index * 360 / foods.length));
+  document.getElementById("wheel").style.transform = `rotate(${rotation}deg)`;
+
+  setTimeout(() => {
+    result.textContent = `🎉 今天就吃：${foods[index]}！`;
+    spinning = false;
+    document.getElementById("spinBtn").disabled = false;
+  }, 2900);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+document.getElementById("foodInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") addFood();
+});
+
+renderList();
+</script>
+</body>
+</html>
